@@ -64,6 +64,8 @@ RUN cd go && go build -o /usr/local/bin/zeromcp-go ./examples/basic/
 RUN cd go && go build -o /usr/local/bin/zeromcp-go-sandbox ./examples/sandbox-test/
 RUN cd go && go build -o /usr/local/bin/zeromcp-go-creds ./examples/credential-test/
 RUN cd go && go build -o /usr/local/bin/zeromcp-go-chaos ./examples/chaos-test/
+RUN cd go && go build -o /usr/local/bin/zeromcp-go-cli ./cmd/zeromcp/
+RUN cd go && go build -o /usr/local/bin/zeromcp-go-advanced ./examples/advanced/
 
 # Build Rust
 RUN cd rust && cargo build --example hello --example sandbox_test --example chaos_test --release

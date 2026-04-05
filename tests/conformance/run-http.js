@@ -23,7 +23,14 @@ const implementations = [
     env: { TEST_MCP_TOKEN: TOKEN },
     port: 14242,
   },
-  // Go HTTP tests would go here when wired up
+  {
+    name: 'Go',
+    command: 'bash',
+    args: ['-c', `cp ${join(__dirname, 'http-config-go.json')} /tmp/zeromcp.config.json && cd /tmp && zeromcp-go-advanced`],
+    env: { TEST_MCP_TOKEN: TOKEN },
+    port: 14243,
+    optional: true,
+  },
 ];
 
 const noAuthImplementations = [
