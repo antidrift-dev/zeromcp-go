@@ -6,7 +6,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/probeo-io/zeromcp/pkg/zeromcp"
+	"github.com/antidrift-dev/zeromcp/pkg/zeromcp"
 )
 
 // Tool is the exported symbol that the scanner looks for.

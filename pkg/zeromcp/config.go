@@ -14,6 +14,7 @@ type Config struct {
 	BypassPermissions bool                         `json:"bypass_permissions,omitempty"`
 	Separator         string                       `json:"separator,omitempty"`
 	Credentials       map[string]CredentialSource   `json:"credentials,omitempty"`
+	ExecuteTimeout    int                          `json:"execute_timeout,omitempty"` // ms, default 30000
 }
 
 // TransportConfig defines a transport type and its settings.

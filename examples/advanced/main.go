@@ -9,7 +9,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/probeo-io/zeromcp/pkg/zeromcp"
+	"github.com/antidrift-dev/zeromcp/pkg/zeromcp"
 )
 
 func main() {

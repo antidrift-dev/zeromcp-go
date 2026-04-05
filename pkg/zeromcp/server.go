@@ -2,11 +2,13 @@ package zeromcp
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 const version = "0.1.0"
@@ -128,8 +130,9 @@ func (s *Server) ServeStdio() {
 func (s *Server) serveStdio(httpAlso bool) {
 	fmt.Fprintf(os.Stderr, "[zeromcp] stdio transport ready\n")
 	scanner := bufio.NewScanner(os.Stdin)
-	// Increase buffer size for large requests
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
+	// Increase buffer size for large requests (10MB to handle giant_string payloads)
+	const maxBuf = 10 * 1024 * 1024
+	scanner.Buffer(make([]byte, 0, maxBuf), maxBuf)
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -356,7 +359,41 @@ func (s *Server) callTool(params map[string]any) map[string]any {
 		}
 	}
 
-	result, err := rt.tool.Execute(args, rt.ctx)
+	// Determine execute timeout: tool-level overrides config default, fallback 30s
+	timeoutMs := s.cfg.ExecuteTimeout
+	if rt.tool.Permissions != nil && rt.tool.Permissions.ExecuteTimeout > 0 {
+		timeoutMs = rt.tool.Permissions.ExecuteTimeout
+	}
+	if timeoutMs <= 0 {
+		timeoutMs = 30000
+	}
+
+	type executeResult struct {
+		val any
+		err error
+	}
+	ch := make(chan executeResult, 1)
+	go func() {
+		v, e := rt.tool.Execute(args, rt.ctx)
+		ch <- executeResult{v, e}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+
+	var result any
+	var err error
+	select {
+	case <-ctx.Done():
+		return map[string]any{
+			"content": []map[string]any{{"type": "text", "text": fmt.Sprintf("Tool %q timed out after %dms", name, timeoutMs)}},
+			"isError": true,
+		}
+	case res := <-ch:
+		result = res.val
+		err = res.err
+	}
+
 	if err != nil {
 		return map[string]any{
 			"content": []map[string]any{{"type": "text", "text": fmt.Sprintf("Error: %s", err.Error())}},

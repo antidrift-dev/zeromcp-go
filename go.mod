@@ -1,3 +1,3 @@
-module github.com/probeo-io/zeromcp
+module github.com/antidrift-dev/zeromcp
 
 go 1.22
