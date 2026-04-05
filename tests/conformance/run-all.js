@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 
 /**
- * Run conformance tests against all zeromcp implementations.
- * Designed to run inside the Docker container with all runtimes installed.
+ * ZeroMCP Cross-Language Conformance Suite
+ * Runs multiple test suites against all implementations.
  */
 
-import { spawn } from 'child_process';
+import { spawn, fork } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { createInterface } from 'readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..', '..');
 
-const implementations = [
+// ---------------------------------------------------------------------------
+// Suite definitions
+// ---------------------------------------------------------------------------
+
+const protocolImplementations = [
   {
     name: 'Node.js',
     command: 'node',
@@ -37,7 +42,6 @@ const implementations = [
   },
   {
     name: 'Swift',
-    // In Docker: /usr/local/bin/zeromcp-swift, locally: .build/debug/zeromcp-example
     command: existsSync('/usr/local/bin/zeromcp-swift') ? '/usr/local/bin/zeromcp-swift' : join(root, 'swift/.build/debug/zeromcp-example'),
     args: [],
     optional: true,
@@ -75,9 +79,176 @@ const implementations = [
   },
 ];
 
-const fixtures = JSON.parse(readFileSync(join(__dirname, 'fixtures.json'), 'utf8'));
+const sandboxToolsDir = join(__dirname, 'sandbox-tools');
 
-import { createInterface } from 'readline';
+const sandboxImplementations = [
+  {
+    name: 'Node.js',
+    command: 'node',
+    args: [join(root, 'nodejs/bin/mcp.js'), 'serve', sandboxToolsDir],
+  },
+  {
+    name: 'Python',
+    command: 'python3',
+    args: ['-m', 'zeromcp', 'serve', sandboxToolsDir],
+    env: { PYTHONPATH: join(root, 'python') },
+  },
+  {
+    name: 'Go',
+    command: existsSync('/usr/local/bin/zeromcp-go-sandbox') ? 'zeromcp-go-sandbox' : join(root, 'go/examples/sandbox-test/zeromcp-go-sandbox'),
+    args: [],
+    optional: true,
+  },
+  {
+    name: 'Rust',
+    command: join(root, 'rust/target/release/examples/sandbox_test'),
+    args: [],
+    optional: true,
+  },
+  {
+    name: 'Java',
+    command: 'java',
+    args: ['-Dfile.encoding=UTF-8', '-cp', join(root, 'java/target/zeromcp-0.1.0.jar') + ':' + join(root, 'java/target/deps/*') + ':/tmp/java-out', 'SandboxTest'],
+    optional: true,
+  },
+  {
+    name: 'Kotlin',
+    command: join(root, 'kotlin/example/build/install/example/bin/example'),
+    args: [],
+    env: { JAVA_TOOL_OPTIONS: '-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8', ZEROMCP_SANDBOX_TEST: 'true' },
+    optional: true,
+  },
+  {
+    name: 'Ruby',
+    command: 'ruby',
+    args: ['-I', join(root, 'ruby/lib'), join(root, 'ruby/bin/zeromcp'), 'serve', sandboxToolsDir],
+  },
+  {
+    name: 'PHP',
+    command: 'php',
+    args: [join(root, 'php/zeromcp.php'), 'serve', sandboxToolsDir],
+    optional: true,
+  },
+  {
+    name: 'Swift',
+    command: existsSync('/usr/local/bin/zeromcp-swift-sandbox') ? '/usr/local/bin/zeromcp-swift-sandbox' : join(root, 'swift/.build/debug/zeromcp-sandbox-test'),
+    args: [],
+    optional: true,
+  },
+  {
+    name: 'C#',
+    command: existsSync('/tmp/csharp-sandbox-out/SandboxTest') ? '/tmp/csharp-sandbox-out/SandboxTest' : 'dotnet',
+    args: existsSync('/tmp/csharp-sandbox-out/SandboxTest') ? [] : ['run', '--project', join(root, 'csharp/SandboxTest'), '--no-build'],
+    optional: true,
+  },
+];
+
+const credentialConfigPath = join(__dirname, 'credential-config.json');
+const credentialToolsDir = join(__dirname, 'credential-tools');
+
+const credentialImplementations = [
+  {
+    name: 'Node.js',
+    command: 'node',
+    args: [join(root, 'nodejs/bin/mcp.js'), 'serve', '--config', credentialConfigPath],
+    env: { TEST_CRM_KEY: 'test-secret-123' },
+  },
+  {
+    name: 'Python',
+    command: 'python3',
+    args: ['-m', 'zeromcp', 'serve', '--config', credentialConfigPath],
+    env: { PYTHONPATH: join(root, 'python'), TEST_CRM_KEY: 'test-secret-123' },
+  },
+  {
+    name: 'Go',
+    command: existsSync('/usr/local/bin/zeromcp-go-creds') ? 'zeromcp-go-creds' : join(root, 'go/examples/credential-test/zeromcp-go-creds'),
+    args: [],
+    env: { ZEROMCP_CONFIG: credentialConfigPath, TEST_CRM_KEY: 'test-secret-123' },
+    optional: true,
+  },
+];
+
+const namespaceToolsDir = join(__dirname, 'namespace-tools');
+
+const namespaceImplementations = [
+  {
+    name: 'Node.js',
+    command: 'node',
+    args: [join(root, 'nodejs/bin/mcp.js'), 'serve', namespaceToolsDir],
+  },
+  {
+    name: 'Python',
+    command: 'python3',
+    args: ['-m', 'zeromcp', 'serve', namespaceToolsDir],
+    env: { PYTHONPATH: join(root, 'python') },
+  },
+  {
+    name: 'Ruby',
+    command: 'ruby',
+    args: ['-I', join(root, 'ruby/lib'), join(root, 'ruby/bin/zeromcp'), 'serve', namespaceToolsDir],
+    optional: true,
+  },
+  {
+    name: 'PHP',
+    command: 'php',
+    args: [join(root, 'php/zeromcp.php'), 'serve', namespaceToolsDir],
+    optional: true,
+  },
+];
+
+const suites = [
+  {
+    name: 'Protocol Conformance',
+    fixtures: 'fixtures.json',
+    implementations: protocolImplementations,
+  },
+  {
+    name: 'Sandbox Enforcement',
+    fixtures: 'sandbox-fixtures.json',
+    implementations: sandboxImplementations,
+    setup: startMockServer,
+    teardown: stopMockServer,
+  },
+  {
+    name: 'Credential Injection',
+    fixtures: 'credential-fixtures.json',
+    implementations: credentialImplementations,
+  },
+  {
+    name: 'Namespace Prefixes',
+    fixtures: 'namespace-fixtures.json',
+    implementations: namespaceImplementations,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Mock HTTP server for sandbox tests
+// ---------------------------------------------------------------------------
+
+import { createServer } from 'http';
+
+let mockServer;
+
+async function startMockServer() {
+  return new Promise((resolve) => {
+    mockServer = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ mock: true, path: req.url }));
+    });
+    mockServer.listen(18923, () => resolve());
+  });
+}
+
+function stopMockServer() {
+  return new Promise((resolve) => {
+    if (mockServer) mockServer.close(resolve);
+    else resolve();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Test runner infrastructure
+// ---------------------------------------------------------------------------
 
 function createRequestHandler(proc) {
   const rl = createInterface({ input: proc.stdout });
@@ -105,19 +276,10 @@ function createRequestHandler(proc) {
   };
 }
 
-// Kept for backward compat with runner.js
-function sendRequest(proc, request) {
-  if (!proc._zeromcpHandler) {
-    proc._zeromcpHandler = createRequestHandler(proc);
-  }
-  return proc._zeromcpHandler(request);
-}
-
 function deepPartialMatch(actual, expected, path = '') {
   const errors = [];
   if (Array.isArray(expected)) {
     if (!Array.isArray(actual)) return [`Expected array at ${path}`];
-    // Compare string arrays as sets (e.g. "required" field — order doesn't matter)
     if (expected.every(v => typeof v === 'string') && actual.every(v => typeof v === 'string')) {
       const missing = expected.filter(v => !actual.includes(v));
       const extra = actual.filter(v => !expected.includes(v));
@@ -144,7 +306,7 @@ function deepPartialMatch(actual, expected, path = '') {
   return errors;
 }
 
-async function testImplementation(impl) {
+async function testImplementation(impl, fixtures) {
   let proc;
   try {
     const env = { ...process.env, ...(impl.env || {}) };
@@ -154,7 +316,6 @@ async function testImplementation(impl) {
     return { name: impl.name, passed: 0, failed: 1, error: 'Failed to spawn' };
   }
 
-  // Check if process started
   const started = await new Promise((resolve) => {
     proc.on('error', () => resolve(false));
     setTimeout(() => resolve(true), 2000);
@@ -230,6 +391,17 @@ async function testImplementation(impl) {
           if (!item.type) errors.push('Content item missing type');
           if (item.text === undefined) errors.push('Content item missing text');
         }
+      } else if (test.match === 'tool_names') {
+        const tools = response?.result?.tools;
+        if (!Array.isArray(tools)) { errors = ['tools not array']; }
+        else {
+          const names = tools.map(t => t.name);
+          for (const expected of test.expect_tool_names) {
+            if (!names.includes(expected)) {
+              errors.push(`Missing tool name: ${expected} (found: ${names.join(', ')})`);
+            }
+          }
+        }
       }
 
       if (errors.length === 0) passed++;
@@ -244,40 +416,93 @@ async function testImplementation(impl) {
   return { name: impl.name, passed, failed, failures };
 }
 
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 async function main() {
   console.log('\n  ZeroMCP Cross-Language Conformance Suite\n');
 
   let totalPassed = 0, totalFailed = 0, totalSkipped = 0;
 
-  for (const impl of implementations) {
-    const result = await testImplementation(impl);
+  // Filter suites by --suite flag
+  const suiteFilter = process.argv.find((a, i) => process.argv[i - 1] === '--suite');
 
-    if (result.skipped) {
-      console.log(`  ⊘ ${result.name} — skipped (binary not found)`);
-      totalSkipped++;
+  for (const suite of suites) {
+    if (suiteFilter && suite.name.toLowerCase() !== suiteFilter.toLowerCase()) continue;
+
+    const fixturesPath = join(__dirname, suite.fixtures);
+    if (!existsSync(fixturesPath)) {
+      console.log(`  ⊘ ${suite.name} — fixture file not found: ${suite.fixtures}`);
       continue;
     }
+    const fixtures = JSON.parse(readFileSync(fixturesPath, 'utf8'));
 
-    if (result.error) {
-      console.log(`  ✗ ${result.name} — ${result.error}`);
-      totalFailed++;
-      continue;
-    }
+    console.log(`  ${suite.name}`);
 
-    const status = result.failed === 0 ? '✓' : '✗';
-    console.log(`  ${status} ${result.name} — ${result.passed}/${result.passed + result.failed} passed`);
+    // Setup hook
+    if (suite.setup) await suite.setup();
 
-    if (result.failures?.length) {
-      for (const f of result.failures) {
-        console.log(`    ✗ ${f.test}: ${f.errors[0]}`);
+    for (const impl of suite.implementations) {
+      const result = await testImplementation(impl, fixtures);
+
+      if (result.skipped) {
+        console.log(`    ⊘ ${result.name} — skipped (binary not found)`);
+        totalSkipped++;
+        continue;
       }
+
+      if (result.error) {
+        console.log(`    ✗ ${result.name} — ${result.error}`);
+        totalFailed++;
+        continue;
+      }
+
+      const total = result.passed + result.failed;
+      const status = result.failed === 0 ? '✓' : '✗';
+      console.log(`    ${status} ${result.name} — ${result.passed}/${total} passed`);
+
+      if (result.failures?.length) {
+        for (const f of result.failures) {
+          console.log(`      ✗ ${f.test}: ${f.errors[0]}`);
+        }
+      }
+
+      totalPassed += result.failed === 0 ? 1 : 0;
+      totalFailed += result.failed > 0 ? 1 : 0;
     }
 
-    totalPassed += result.failed === 0 ? 1 : 0;
-    totalFailed += result.failed > 0 ? 1 : 0;
+    // Teardown hook
+    if (suite.teardown) await suite.teardown();
+
+    console.log();
   }
 
-  console.log(`\n  ${totalPassed} languages passed, ${totalFailed} failed, ${totalSkipped} skipped\n`);
+  // HTTP suite (separate runner)
+  if (!suiteFilter || suiteFilter.toLowerCase() === 'http') {
+    try {
+      const { runHttpSuite } = await import('./run-http.js');
+      console.log('  HTTP Transport + Auth');
+      const results = await runHttpSuite();
+      for (const r of results) {
+        const total = r.passed + r.failed;
+        const status = r.failed === 0 ? '✓' : '✗';
+        console.log(`    ${status} ${r.name} — ${r.passed}/${total} passed`);
+        if (r.failures?.length) {
+          for (const f of r.failures) {
+            console.log(`      ✗ ${f.test}: ${f.errors[0]}`);
+          }
+        }
+        totalPassed += r.failed === 0 ? 1 : 0;
+        totalFailed += r.failed > 0 ? 1 : 0;
+      }
+      console.log();
+    } catch (err) {
+      console.log(`  ⊘ HTTP Transport + Auth — skipped (${err.message})`);
+    }
+  }
+
+  console.log(`  ${totalPassed} passed, ${totalFailed} failed, ${totalSkipped} skipped\n`);
   process.exit(totalFailed > 0 ? 1 : 0);
 }
 

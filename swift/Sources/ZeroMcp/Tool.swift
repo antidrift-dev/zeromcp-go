@@ -4,15 +4,18 @@ public struct Permissions {
     public var network: NetworkPermission
     public var fs: FSPermission
     public var exec: Bool
+    public var executeTimeout: Double? // seconds, overrides config default
 
     public init(
         network: NetworkPermission = .full,
         fs: FSPermission = .none,
-        exec: Bool = false
+        exec: Bool = false,
+        executeTimeout: Double? = nil
     ) {
         self.network = network
         self.fs = fs
         self.exec = exec
+        self.executeTimeout = executeTimeout
     }
 
     public enum NetworkPermission {
@@ -31,10 +34,12 @@ public struct Permissions {
 public struct ToolContext {
     public let toolName: String
     public let credentials: Any?
+    public let permissions: Permissions
 
-    public init(toolName: String, credentials: Any? = nil) {
+    public init(toolName: String, credentials: Any? = nil, permissions: Permissions = Permissions()) {
         self.toolName = toolName
         self.credentials = credentials
+        self.permissions = permissions
     }
 }
 

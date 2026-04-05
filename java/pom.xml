@@ -4,13 +4,36 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.zeromcp</groupId>
+    <groupId>io.antidrift</groupId>
     <artifactId>zeromcp</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <name>zeromcp</name>
     <description>Zero-config MCP runtime for Java</description>
+    <url>https://github.com/antidrift-dev/zeromcp</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Antidrift</name>
+            <email>hello@probeo.io</email>
+            <organization>Antidrift</organization>
+            <organizationUrl>https://github.com/antidrift-dev</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/antidrift-dev/zeromcp.git</connection>
+        <developerConnection>scm:git:ssh://github.com:antidrift-dev/zeromcp.git</developerConnection>
+        <url>https://github.com/antidrift-dev/zeromcp/tree/main/java</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

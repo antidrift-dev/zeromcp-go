@@ -35,10 +35,12 @@ class Context
 {
     public string $toolName;
     public mixed $credentials;
+    public array $permissions;
 
-    public function __construct(string $toolName, mixed $credentials = null)
+    public function __construct(string $toolName, mixed $credentials = null, array $permissions = [])
     {
         $this->toolName = $toolName;
         $this->credentials = $credentials;
+        $this->permissions = $permissions;
     }
 }

@@ -7,12 +7,14 @@ public class Permissions
     public object? Network { get; set; } // bool, string[], or null
     public object? Fs { get; set; } // bool, "read", "write", or null
     public bool Exec { get; set; }
+    public int? ExecuteTimeout { get; set; } // ms, overrides config default
 }
 
 public class ToolContext
 {
     public string ToolName { get; set; } = "";
     public object? Credentials { get; set; }
+    public Permissions? Permissions { get; set; }
 }
 
 public class ToolDefinition

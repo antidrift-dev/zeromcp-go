@@ -38,6 +38,7 @@ export interface Config {
   namespacing?: Record<string, NamespaceOverride>;
   credentials?: Record<string, CredentialSource>;
   remote?: RemoteServer[];
+  execute_timeout?: number; // ms, default 30000
 }
 
 export function resolveToolSources(tools?: string | (string | ToolSource)[]): ToolSource[] {

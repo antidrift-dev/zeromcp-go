@@ -1,4 +1,4 @@
-import io.zeromcp.*;
+import io.antidrift.zeromcp.*;
 
 public class Main {
     public static void main(String[] args) {

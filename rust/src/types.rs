@@ -18,6 +18,10 @@ pub struct Permissions {
     /// Whether child-process execution is allowed.
     #[serde(default)]
     pub exec: bool,
+
+    /// Per-tool execute timeout in milliseconds. Overrides config default.
+    #[serde(default)]
+    pub execute_timeout: Option<u64>,
 }
 
 /// Context passed to every tool execution.

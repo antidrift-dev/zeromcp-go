@@ -1,0 +1,81 @@
+{
+  "tests": [
+    {
+      "name": "ns_init",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2024-11-05",
+          "capabilities": {},
+          "clientInfo": { "name": "namespace-test", "version": "1.0" }
+        }
+      },
+      "expect": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": { "protocolVersion": "2024-11-05" }
+      },
+      "match": "partial"
+    },
+    {
+      "name": "ns_initialized",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+      },
+      "match": "silent"
+    },
+    {
+      "name": "ns_tool_count",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list",
+        "params": {}
+      },
+      "expect_min_tools": 3,
+      "match": "tool_count"
+    },
+    {
+      "name": "ns_subdir_prefix",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/list",
+        "params": {}
+      },
+      "expect_tool_names": ["billing_invoice", "billing_refund", "hello"],
+      "match": "tool_names"
+    },
+    {
+      "name": "ns_call_prefixed_tool",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+          "name": "billing_invoice",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "tool": "billing_invoice" },
+      "match": "content_json"
+    },
+    {
+      "name": "ns_call_root_tool",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+          "name": "hello",
+          "arguments": { "name": "World" }
+        }
+      },
+      "expect_content_contains": "Hello, World!",
+      "match": "content_contains"
+    }
+  ]
+}

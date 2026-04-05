@@ -8,6 +8,7 @@ class Config
     public string $separator;
     public bool $logging;
     public bool $bypassPermissions;
+    public int $executeTimeout; // seconds
 
     public function __construct(array $opts = [])
     {
@@ -15,6 +16,7 @@ class Config
         $this->separator = $opts['separator'] ?? '_';
         $this->logging = $opts['logging'] ?? false;
         $this->bypassPermissions = $opts['bypass_permissions'] ?? false;
+        $this->executeTimeout = $opts['execute_timeout'] ?? 30;
     }
 
     public static function load(?string $path = null): self

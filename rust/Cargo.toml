@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 description = "Zero-config MCP runtime — Rust library"
 license = "MIT"
+authors = ["Antidrift <hello@probeo.io>"]
+repository = "https://github.com/antidrift-dev/zeromcp"
+homepage = "https://github.com/antidrift-dev/zeromcp/tree/main/rust"
+readme = "README.md"
+keywords = ["mcp", "zero-config", "tools", "ai-agents"]
+categories = ["network-programming", "web-programming"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -13,3 +19,11 @@ tokio = { version = "1", features = ["full"] }
 [[example]]
 name = "hello"
 path = "examples/hello.rs"
+
+[[example]]
+name = "sandbox_test"
+path = "examples/sandbox_test.rs"
+
+[[example]]
+name = "chaos_test"
+path = "examples/chaos_test.rs"

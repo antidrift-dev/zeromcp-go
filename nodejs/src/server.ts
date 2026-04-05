@@ -74,11 +74,13 @@ export async function serve(configOrPath?: Config | string): Promise<void> {
   const transports = resolveTransports(config);
   const hasHttp = transports.some(t => t.type === 'http');
 
+  const executeTimeout = config.execute_timeout ?? 30000;
+
   for (const t of transports) {
     if (t.type === 'stdio') {
-      startStdio(allTools, hasHttp);
+      startStdio(allTools, hasHttp, executeTimeout);
     } else if (t.type === 'http') {
-      startHttp(allTools, t.port || 4242, t.auth);
+      startHttp(allTools, t.port || 4242, t.auth, executeTimeout);
     }
   }
 
@@ -91,7 +93,7 @@ export async function serve(configOrPath?: Config | string): Promise<void> {
   process.on('SIGINT', cleanup);
 }
 
-function startStdio(tools: Map<string, ToolDefinition>, httpAlso: boolean): void {
+function startStdio(tools: Map<string, ToolDefinition>, httpAlso: boolean, executeTimeout: number): void {
   const rl = createInterface({ input: process.stdin });
   console.error(`[zeromcp] stdio transport ready`);
 
@@ -103,7 +105,12 @@ function startStdio(tools: Map<string, ToolDefinition>, httpAlso: boolean): void
       return;
     }
 
-    const response = await handleRequest(request, tools);
+    // Guard against non-object JSON (null, arrays, primitives)
+    if (!request || typeof request !== 'object' || Array.isArray(request)) {
+      return;
+    }
+
+    const response = await handleRequest(request, tools, executeTimeout);
     if (response) {
       process.stdout.write(JSON.stringify(response) + '\n');
     }
@@ -114,7 +121,7 @@ function startStdio(tools: Map<string, ToolDefinition>, httpAlso: boolean): void
   });
 }
 
-function startHttp(tools: Map<string, ToolDefinition>, port: number, authConfig?: string): void {
+function startHttp(tools: Map<string, ToolDefinition>, port: number, authConfig?: string, executeTimeout: number = 30000): void {
   const expectedToken = authConfig ? resolveAuth(authConfig) : undefined;
 
   const server = createServer(async (req, res) => {
@@ -149,7 +156,7 @@ function startHttp(tools: Map<string, ToolDefinition>, port: number, authConfig?
     // MCP JSON-RPC endpoint
     if (url.pathname === '/mcp' && req.method === 'POST') {
       const body = await parseBody(req);
-      const response = await handleRequest(body, tools);
+      const response = await handleRequest(body, tools, executeTimeout);
       json(res, response || { jsonrpc: '2.0', result: {} });
       return;
     }
@@ -181,7 +188,8 @@ function json(res: import('http').ServerResponse, data: unknown, status = 200): 
 
 async function handleRequest(
   request: JsonRpcRequest,
-  tools: Map<string, ToolDefinition>
+  tools: Map<string, ToolDefinition>,
+  defaultTimeout: number = 30000
 ): Promise<JsonRpcResponse | null> {
   const { id, method, params } = request;
 
@@ -219,7 +227,7 @@ async function handleRequest(
       return {
         jsonrpc: '2.0',
         id,
-        result: await callTool(tools, params as { name: string; arguments?: Record<string, unknown> }),
+        result: await callTool(tools, params as { name: string; arguments?: Record<string, unknown> }, defaultTimeout),
       };
 
     case 'ping':
@@ -249,9 +257,11 @@ function buildToolList(tools: Map<string, ToolDefinition>) {
 
 async function callTool(
   tools: Map<string, ToolDefinition>,
-  params: { name: string; arguments?: Record<string, unknown> }
+  params: { name: string; arguments?: Record<string, unknown> },
+  defaultTimeout: number = 30000
 ) {
-  const { name, arguments: args = {} } = params;
+  const name = params?.name ?? '';
+  const args = params?.arguments ?? {};
 
   const tool = tools.get(name);
   if (!tool) {
@@ -270,8 +280,11 @@ async function callTool(
     };
   }
 
+  // Tool-level timeout overrides config default
+  const timeout = tool.execute_timeout ?? defaultTimeout;
+
   try {
-    const result = await tool.execute(args);
+    const result = await withTimeout(tool.execute(args), timeout, name);
     const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
     return {
       content: [{ type: 'text', text }],
@@ -282,4 +295,17 @@ async function callTool(
       isError: true,
     };
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, toolName: string): Promise<T> {
+  if (ms <= 0) return promise; // 0 or negative = no timeout
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Tool "${toolName}" timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
 }

@@ -133,10 +133,50 @@ class Server
         }
 
         try {
-            $ctx = new Context($name);
-            $result = $tool->call($args, $ctx);
+            $ctx = new Context($name, null, $tool->permissions);
+
+            // Tool-level timeout overrides config default
+            $timeoutSecs = $tool->permissions['execute_timeout'] ?? $this->config->executeTimeout;
+
+            // Use pcntl_alarm for timeout if available (POSIX systems)
+            $timedOut = false;
+            if (function_exists('pcntl_alarm') && function_exists('pcntl_signal')) {
+                $previousHandler = null;
+                pcntl_signal(SIGALRM, function () use (&$timedOut) {
+                    $timedOut = true;
+                    throw new \RuntimeException("__ZEROMCP_TIMEOUT__");
+                });
+                pcntl_alarm((int) $timeoutSecs);
+            }
+
+            try {
+                $result = $tool->call($args, $ctx);
+            } finally {
+                if (function_exists('pcntl_alarm')) {
+                    pcntl_alarm(0); // Cancel alarm
+                }
+            }
+
+            if ($timedOut) {
+                return [
+                    'content' => [['type' => 'text', 'text' => "Tool \"$name\" timed out after {$timeoutSecs}s"]],
+                    'isError' => true,
+                ];
+            }
+
             $text = is_string($result) ? $result : json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             return ['content' => [['type' => 'text', 'text' => $text]]];
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === '__ZEROMCP_TIMEOUT__') {
+                return [
+                    'content' => [['type' => 'text', 'text' => "Tool \"$name\" timed out after {$timeoutSecs}s"]],
+                    'isError' => true,
+                ];
+            }
+            return [
+                'content' => [['type' => 'text', 'text' => "Error: {$e->getMessage()}"]],
+                'isError' => true,
+            ];
         } catch (\Throwable $e) {
             return [
                 'content' => [['type' => 'text', 'text' => "Error: {$e->getMessage()}"]],

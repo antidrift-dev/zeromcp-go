@@ -23,6 +23,9 @@ type Permissions struct {
 
 	// Exec allows spawning child processes.
 	Exec bool
+
+	// ExecuteTimeout overrides the config-level execute_timeout for this tool (ms).
+	ExecuteTimeout int
 }
 
 // SandboxOptions configures sandbox behavior.

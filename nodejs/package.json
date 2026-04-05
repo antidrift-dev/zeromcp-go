@@ -37,6 +37,20 @@
     "tools",
     "ai-agents"
   ],
-  "author": "",
-  "license": "ISC"
+  "author": "Antidrift <hello@probeo.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antidrift-dev/zeromcp.git",
+    "directory": "nodejs"
+  },
+  "homepage": "https://github.com/antidrift-dev/zeromcp/tree/main/nodejs",
+  "bugs": {
+    "url": "https://github.com/antidrift-dev/zeromcp/issues"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ]
 }

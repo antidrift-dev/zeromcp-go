@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'timeout'
 require_relative 'schema'
 require_relative 'config'
 require_relative 'tool'
 require_relative 'scanner'
+require_relative 'sandbox'
 
 module ZeroMcp
   class Server
@@ -24,14 +26,20 @@ module ZeroMcp
       $stderr.puts "[zeromcp] stdio transport ready"
 
       $stdin.each_line do |line|
-        line = line.strip
+        begin
+          line = line.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
+        rescue StandardError
+          next
+        end
         next if line.empty?
 
         begin
           request = JSON.parse(line)
-        rescue JSON::ParserError
+        rescue JSON::ParserError, EncodingError, StandardError
           next
         end
+
+        next unless request.is_a?(Hash)
 
         response = handle_request(request)
         if response
@@ -110,8 +118,9 @@ module ZeroMcp
     end
 
     def call_tool(params)
-      name = params['name']
-      args = params['arguments'] || {}
+      name = params.is_a?(Hash) ? params['name'] : nil
+      args = params.is_a?(Hash) ? (params['arguments'] || {}) : {}
+      args = {} if args.nil?
 
       tool = @tools[name]
       unless tool
@@ -131,10 +140,18 @@ module ZeroMcp
       end
 
       begin
-        ctx = Context.new(tool_name: name)
-        result = tool.call(args, ctx)
+        ctx = Context.new(tool_name: name, permissions: tool.permissions)
+
+        # Tool-level timeout overrides config default
+        timeout_secs = (tool.permissions.is_a?(Hash) && tool.permissions[:execute_timeout]) ||
+                       (tool.permissions.is_a?(Hash) && tool.permissions['execute_timeout']) ||
+                       @config.execute_timeout
+
+        result = Timeout.timeout(timeout_secs) { tool.call(args, ctx) }
         text = result.is_a?(String) ? result : JSON.pretty_generate(result)
         { 'content' => [{ 'type' => 'text', 'text' => text }] }
+      rescue Timeout::Error
+        { 'content' => [{ 'type' => 'text', 'text' => "Tool \"#{name}\" timed out after #{timeout_secs}s" }], 'isError' => true }
       rescue => e
         { 'content' => [{ 'type' => 'text', 'text' => "Error: #{e.message}" }], 'isError' => true }
       end

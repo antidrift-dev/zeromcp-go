@@ -4,6 +4,7 @@
 require_once __DIR__ . '/src/Schema.php';
 require_once __DIR__ . '/src/Config.php';
 require_once __DIR__ . '/src/Tool.php';
+require_once __DIR__ . '/src/Sandbox.php';
 require_once __DIR__ . '/src/Scanner.php';
 require_once __DIR__ . '/src/Server.php';
 

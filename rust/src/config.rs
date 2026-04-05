@@ -15,10 +15,18 @@ pub struct Config {
     /// Tool-name separator (default `_`).
     #[serde(default = "default_separator")]
     pub separator: String,
+
+    /// Default execute timeout in milliseconds (default 30000).
+    #[serde(default = "default_execute_timeout")]
+    pub execute_timeout: u64,
 }
 
 fn default_separator() -> String {
     "_".to_string()
+}
+
+fn default_execute_timeout() -> u64 {
+    30000
 }
 
 impl Default for Config {
@@ -27,6 +35,7 @@ impl Default for Config {
             logging: false,
             bypass_permissions: false,
             separator: "_".to_string(),
+            execute_timeout: 30000,
         }
     }
 }

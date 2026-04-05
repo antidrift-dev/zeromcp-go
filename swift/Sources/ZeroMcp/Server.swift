@@ -163,9 +163,23 @@ public class ZeroMcp {
             ]
         }
 
+        // Tool-level timeout overrides config default
+        let timeoutSecs = tool.permissions.executeTimeout ?? config.executeTimeout ?? 30.0
+
         do {
-            let ctx = ToolContext(toolName: name)
-            let result = try await tool.execute(args, ctx)
+            let ctx = ToolContext(toolName: name, permissions: tool.permissions)
+            let result = try await withThrowingTaskGroup(of: Any.self) { group in
+                group.addTask {
+                    return try await tool.execute(args, ctx)
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: UInt64(timeoutSecs * 1_000_000_000))
+                    throw ZeroMcpTimeoutError(toolName: name, timeoutSecs: timeoutSecs)
+                }
+                let first = try await group.next()!
+                group.cancelAll()
+                return first
+            }
             let text: String
             if let s = result as? String {
                 text = s
@@ -178,6 +192,11 @@ public class ZeroMcp {
                 text = "\(result)"
             }
             return ["content": [["type": "text", "text": text]]]
+        } catch let e as ZeroMcpTimeoutError {
+            return [
+                "content": [["type": "text", "text": "Tool \"\(e.toolName)\" timed out after \(e.timeoutSecs)s"]],
+                "isError": true
+            ]
         } catch {
             return [
                 "content": [["type": "text", "text": "Error: \(error.localizedDescription)"]],
@@ -185,6 +204,11 @@ public class ZeroMcp {
             ]
         }
     }
+}
+
+struct ZeroMcpTimeoutError: Error {
+    let toolName: String
+    let timeoutSecs: Double
 }
 
 private func fputs(_ stream: UnsafeMutablePointer<FILE>, _ string: String) {

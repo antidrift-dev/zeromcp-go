@@ -1,0 +1,84 @@
+# ZeroMCP &mdash; C#
+
+Sandboxed MCP server library for .NET. Register tools, call `server.Serve()`, done.
+
+## Getting started
+
+```csharp
+using ZeroMcp;
+
+var server = new ZeroMcpServer();
+
+server.Tool("hello", new ToolDefinition
+{
+    Description = "Say hello to someone",
+    Input = new Dictionary<string, InputField>
+    {
+        ["name"] = new InputField(SimpleType.String)
+    },
+    Execute = async (args, ctx) =>
+    {
+        var name = args["name"].GetString() ?? "world";
+        return $"Hello, {name}!";
+    }
+});
+
+await server.Serve();
+```
+
+Stdio works immediately. No transport configuration needed.
+
+## vs. the official SDK
+
+The official C# SDK (backed by Microsoft) requires server setup, transport configuration, and schema definition. ZeroMCP handles the protocol, transport, and schema generation with a clean async/await API.
+
+The official SDK has **no sandbox**. ZeroMCP lets tools declare network, filesystem, and exec permissions.
+
+## Requirements
+
+- .NET 8
+
+## Build & run
+
+```sh
+dotnet run --project Example
+```
+
+Or publish a self-contained binary:
+
+```sh
+dotnet publish Example -c Release -o ./out
+./out/Example
+```
+
+## Sandbox
+
+```csharp
+server.Tool("fetch_data", new ToolDefinition
+{
+    Description = "Fetch from our API",
+    Input = new Dictionary<string, InputField>
+    {
+        ["url"] = new InputField(SimpleType.String)
+    },
+    Permissions = new ToolPermissions
+    {
+        Network = new[] { "api.example.com", "*.internal.dev" },
+        Fs = FsPermission.None,
+        Exec = false
+    },
+    Execute = async (args, ctx) => { /* ... */ }
+});
+```
+
+## Project reference
+
+```xml
+<ProjectReference Include="../ZeroMcp/ZeroMcp.csproj" />
+```
+
+## Testing
+
+```sh
+dotnet test
+```

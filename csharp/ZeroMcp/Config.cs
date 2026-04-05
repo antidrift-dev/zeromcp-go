@@ -17,6 +17,9 @@ public class ZeroMcpConfig
     [JsonPropertyName("bypass_permissions")]
     public bool? BypassPermissions { get; set; }
 
+    [JsonPropertyName("execute_timeout")]
+    public int? ExecuteTimeout { get; set; } // ms, default 30000
+
     public static ZeroMcpConfig Load(string? path = null)
     {
         path ??= Path.Combine(Directory.GetCurrentDirectory(), "zeromcp.config.json");

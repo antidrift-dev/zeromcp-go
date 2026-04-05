@@ -15,6 +15,7 @@ export interface ToolDefinition {
   description: string;
   input: InputSchema;
   execute: (args: Record<string, unknown>, ctx?: ToolContext) => Promise<unknown>;
+  execute_timeout?: number; // ms, per-tool override
 }
 
 export class ToolScanner {
@@ -147,6 +148,7 @@ export class ToolScanner {
         description: tool.description || '',
         input: tool.input || {},
         execute: (args: Record<string, unknown>) => rawExecute(args, ctx),
+        execute_timeout: tool.permissions?.execute_timeout,
       });
 
       console.error(`[zeromcp] Loaded: ${name}`);

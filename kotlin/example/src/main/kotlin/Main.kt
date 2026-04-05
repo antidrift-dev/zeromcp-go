@@ -1,6 +1,15 @@
-import io.zeromcp.*
+import io.antidrift.zeromcp.*
 
 fun main() {
+    if (System.getenv("ZEROMCP_SANDBOX_TEST") == "true") {
+        sandboxTestMain()
+        return
+    }
+    if (System.getenv("ZEROMCP_CHAOS_TEST") == "true") {
+        chaosTestMain()
+        return
+    }
+
     val server = ZeroMcp()
 
     server.tool("hello") {

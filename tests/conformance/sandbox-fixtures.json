@@ -1,0 +1,114 @@
+{
+  "tests": [
+    {
+      "name": "sandbox_init",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2024-11-05",
+          "capabilities": {},
+          "clientInfo": { "name": "sandbox-test", "version": "1.0" }
+        }
+      },
+      "expect": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "protocolVersion": "2024-11-05"
+        }
+      },
+      "match": "partial"
+    },
+    {
+      "name": "sandbox_initialized",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+      },
+      "match": "silent"
+    },
+    {
+      "name": "sandbox_tool_count",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list",
+        "params": {}
+      },
+      "expect_min_tools": 5,
+      "match": "tool_count"
+    },
+    {
+      "name": "sandbox_allowed_domain",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+          "name": "fetch_allowed",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "status": "ok" },
+      "match": "content_json"
+    },
+    {
+      "name": "sandbox_blocked_domain",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+          "name": "fetch_blocked",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "blocked": true },
+      "match": "content_json"
+    },
+    {
+      "name": "sandbox_network_disabled",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 12,
+        "method": "tools/call",
+        "params": {
+          "name": "fetch_no_network",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "blocked": true },
+      "match": "content_json"
+    },
+    {
+      "name": "sandbox_unrestricted",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 13,
+        "method": "tools/call",
+        "params": {
+          "name": "fetch_unrestricted",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "status": "ok" },
+      "match": "content_json"
+    },
+    {
+      "name": "sandbox_wildcard_match",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 14,
+        "method": "tools/call",
+        "params": {
+          "name": "fetch_wildcard",
+          "arguments": {}
+        }
+      },
+      "expect_content_json": { "status": "ok" },
+      "match": "content_json"
+    }
+  ]
+}

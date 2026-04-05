@@ -18,11 +18,12 @@ module ZeroMcp
   end
 
   class Context
-    attr_reader :credentials, :tool_name
+    attr_reader :credentials, :tool_name, :permissions
 
-    def initialize(tool_name:, credentials: nil)
+    def initialize(tool_name:, credentials: nil, permissions: {})
       @tool_name = tool_name
       @credentials = credentials
+      @permissions = permissions
     end
   end
 

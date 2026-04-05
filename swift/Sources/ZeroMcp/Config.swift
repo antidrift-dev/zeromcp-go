@@ -5,24 +5,28 @@ public struct ZeroMcpConfig: Codable {
     public var separator: String?
     public var logging: Bool?
     public var bypassPermissions: Bool?
+    public var executeTimeout: Double? // seconds, default 30
 
     enum CodingKeys: String, CodingKey {
         case tools
         case separator
         case logging
         case bypassPermissions = "bypass_permissions"
+        case executeTimeout = "execute_timeout"
     }
 
     public init(
         tools: String? = nil,
         separator: String? = nil,
         logging: Bool? = nil,
-        bypassPermissions: Bool? = nil
+        bypassPermissions: Bool? = nil,
+        executeTimeout: Double? = nil
     ) {
         self.tools = tools
         self.separator = separator
         self.logging = logging
         self.bypassPermissions = bypassPermissions
+        self.executeTimeout = executeTimeout
     }
 
     public static func load(from path: String? = nil) -> ZeroMcpConfig {

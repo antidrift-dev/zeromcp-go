@@ -8,6 +8,12 @@
     <Authors>Antidrift</Authors>
     <Description>Zero-config MCP runtime for .NET</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/probeo-io/zeromcp</RepositoryUrl>
+    <RepositoryUrl>https://github.com/antidrift-dev/zeromcp</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/antidrift-dev/zeromcp</PackageProjectUrl>
+    <PackageTags>mcp;zero-config;tools;ai-agents</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 </Project>

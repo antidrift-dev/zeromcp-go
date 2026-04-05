@@ -61,20 +61,27 @@ COPY . .
 
 # Build Go
 RUN cd go && go build -o /usr/local/bin/zeromcp-go ./examples/basic/
+RUN cd go && go build -o /usr/local/bin/zeromcp-go-sandbox ./examples/sandbox-test/
+RUN cd go && go build -o /usr/local/bin/zeromcp-go-creds ./examples/credential-test/
+RUN cd go && go build -o /usr/local/bin/zeromcp-go-chaos ./examples/chaos-test/
 
 # Build Rust
-RUN cd rust && cargo build --example hello --release
+RUN cd rust && cargo build --example hello --example sandbox_test --example chaos_test --release
 
 # Build Swift (clean build inside Linux container)
 RUN cd swift && rm -rf .build && swift build 2>&1; \
-    test -f .build/debug/zeromcp-example && cp .build/debug/zeromcp-example /usr/local/bin/zeromcp-swift || echo "Swift build failed"
+    test -f .build/debug/zeromcp-example && cp .build/debug/zeromcp-example /usr/local/bin/zeromcp-swift || echo "Swift example build failed"; \
+    test -f .build/debug/zeromcp-sandbox-test && cp .build/debug/zeromcp-sandbox-test /usr/local/bin/zeromcp-swift-sandbox || echo "Swift sandbox build failed"; \
+    test -f .build/debug/zeromcp-chaos-test && cp .build/debug/zeromcp-chaos-test /usr/local/bin/zeromcp-swift-chaos || echo "Swift chaos build failed"
 
 # Build Java — library with deps, then compile example
 RUN cd java && mvn package -q -DskipTests && \
     mvn dependency:copy-dependencies -DoutputDirectory=target/deps -q && \
     mkdir -p /tmp/java-out && \
     javac -cp "target/zeromcp-0.1.0.jar:target/deps/*" \
-      -d /tmp/java-out example/src/main/java/Main.java 2>&1 || echo "Java example build failed"
+      -d /tmp/java-out example/src/main/java/Main.java \
+      example/src/main/java/SandboxTest.java \
+      example/src/main/java/ChaosTest.java 2>&1 || echo "Java example build failed"
 
 # Build Kotlin — library + example distribution
 ENV JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8"
@@ -82,5 +89,7 @@ RUN cd kotlin && gradle :example:installDist -x test 2>&1 | tail -5 || echo "Kot
 
 # Build C# — publish self-contained
 RUN cd csharp && dotnet publish Example -c Release -o /tmp/csharp-out 2>&1 | tail -3
+RUN cd csharp && dotnet publish SandboxTest -c Release -o /tmp/csharp-sandbox-out 2>&1 | tail -3
+RUN cd csharp && dotnet publish ChaosTest -c Release -o /tmp/csharp-chaos-out 2>&1 | tail -3
 
 CMD ["node", "tests/conformance/run-all.js"]

@@ -5,6 +5,7 @@ use crate::types::{BoxFuture, Ctx, Permissions, Tool};
 use crate::schema::Input;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+use std::time::Duration;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 /// The MCP server. Register tools, then call `serve()`.
@@ -63,10 +64,10 @@ impl Server {
         let mut reader = BufReader::new(stdin);
         let mut writer = stdout;
 
-        let mut line = String::new();
+        let mut raw_line = Vec::new();
         loop {
-            line.clear();
-            match reader.read_line(&mut line).await {
+            raw_line.clear();
+            match reader.read_until(b'\n', &mut raw_line).await {
                 Ok(0) => break, // EOF
                 Ok(_) => {}
                 Err(e) => {
@@ -75,7 +76,16 @@ impl Server {
                 }
             }
 
-            let request: Value = match serde_json::from_str(line.trim()) {
+            // Handle invalid UTF-8 gracefully (binary_garbage resilience)
+            let line = match std::str::from_utf8(&raw_line) {
+                Ok(s) => s.trim().to_string(),
+                Err(_) => {
+                    eprintln!("[zeromcp] skipping non-UTF-8 input");
+                    continue;
+                }
+            };
+
+            let request: Value = match serde_json::from_str(&line) {
                 Ok(v) => v,
                 Err(_) => continue,
             };
@@ -211,9 +221,21 @@ impl Server {
             bypass: self.config.bypass_permissions,
         };
 
-        // Execute
-        match (tool.execute)(args, ctx).await {
-            Ok(result) => {
+        // Determine timeout: tool-level overrides config default
+        let timeout_ms = tool.permissions.execute_timeout
+            .unwrap_or(self.config.execute_timeout);
+        let timeout_dur = Duration::from_millis(timeout_ms);
+
+        // Execute with timeout
+        let execute_future = (tool.execute)(args, ctx);
+        match tokio::time::timeout(timeout_dur, execute_future).await {
+            Err(_elapsed) => {
+                json!({
+                    "content": [{ "type": "text", "text": format!("Tool \"{name}\" timed out after {timeout_ms}ms") }],
+                    "isError": true
+                })
+            }
+            Ok(Ok(result)) => {
                 let text = if result.is_string() {
                     result.as_str().unwrap().to_string()
                 } else {
@@ -223,7 +245,7 @@ impl Server {
                     "content": [{ "type": "text", "text": text }]
                 })
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 json!({
                     "content": [{ "type": "text", "text": format!("Error: {e}") }],
                     "isError": true

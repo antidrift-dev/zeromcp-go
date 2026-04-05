@@ -55,13 +55,29 @@ public class ZeroMcpServer
             try
             {
                 request = JsonDocument.Parse(line);
+                // Verify it's an object (malformed_json resilience)
+                if (request.RootElement.ValueKind != JsonValueKind.Object)
+                    continue;
             }
-            catch
+            catch (JsonException)
+            {
+                continue;
+            }
+            catch (Exception)
             {
                 continue;
             }
 
-            var response = await HandleRequest(request);
+            Dictionary<string, object?>? response;
+            try
+            {
+                response = await HandleRequest(request);
+            }
+            catch (Exception)
+            {
+                // Malformed JSON that slipped past parsing -- skip
+                continue;
+            }
             if (response != null)
             {
                 var json = JsonSerializer.Serialize(response, JsonOptions);
@@ -200,8 +216,28 @@ public class ZeroMcpServer
 
         try
         {
-            var ctx = new ToolContext { ToolName = name };
-            var result = await tool.Execute!(args, ctx);
+            var ctx = new ToolContext { ToolName = name, Permissions = tool.Permissions };
+
+            // Tool-level timeout overrides config default
+            var timeoutMs = tool.Permissions?.ExecuteTimeout ?? _config.ExecuteTimeout ?? 30000;
+
+            var executeTask = tool.Execute!(args, ctx);
+            var delayTask = Task.Delay(timeoutMs);
+
+            var completed = await Task.WhenAny(executeTask, delayTask);
+            if (completed == delayTask)
+            {
+                return new Dictionary<string, object>
+                {
+                    ["content"] = new List<Dictionary<string, string>>
+                    {
+                        new() { ["type"] = "text", ["text"] = $"Tool \"{name}\" timed out after {timeoutMs}ms" }
+                    },
+                    ["isError"] = true
+                };
+            }
+
+            var result = await executeTask;
             var text = result is string s
                 ? s
                 : JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });

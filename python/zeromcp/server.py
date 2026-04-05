@@ -33,17 +33,19 @@ async def serve(config_or_path: dict | str | None = None) -> None:
 
     # Start transports
     transports = resolve_transports(config)
+    execute_timeout = config.get("execute_timeout", 30)  # seconds
+
     for t in transports:
         if t["type"] == "stdio":
-            await _start_stdio(all_tools)
+            await _start_stdio(all_tools, execute_timeout)
 
 
-async def _start_stdio(tools: dict) -> None:
+async def _start_stdio(tools: dict, execute_timeout: float = 30) -> None:
     """Read JSON-RPC requests line-by-line from stdin, write responses to stdout."""
     _log("stdio transport ready")
 
     loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader()
+    reader = asyncio.StreamReader(limit=16 * 1024 * 1024)  # 16MB line limit
     protocol = asyncio.StreamReaderProtocol(reader)
     await loop.connect_read_pipe(lambda: protocol, sys.stdin)
 
@@ -56,23 +58,30 @@ async def _start_stdio(tools: dict) -> None:
         if not line:
             break
 
-        line_str = line.decode("utf-8").strip()
+        try:
+            line_str = line.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            continue
         if not line_str:
             continue
 
         try:
             request = json.loads(line_str)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             continue
 
-        response = await _handle_request(request, tools)
+        # Guard against non-dict JSON
+        if not isinstance(request, dict):
+            continue
+
+        response = await _handle_request(request, tools, execute_timeout)
         if response is not None:
             out = json.dumps(response) + "\n"
             sys.stdout.write(out)
             sys.stdout.flush()
 
 
-async def _handle_request(request: dict, tools: dict) -> dict | None:
+async def _handle_request(request: dict, tools: dict, execute_timeout: float = 30) -> dict | None:
     req_id = request.get("id")
     method = request.get("method", "")
     params = request.get("params", {})
@@ -103,7 +112,7 @@ async def _handle_request(request: dict, tools: dict) -> dict | None:
         return {
             "jsonrpc": "2.0",
             "id": req_id,
-            "result": await _call_tool(tools, params),
+            "result": await _call_tool(tools, params, execute_timeout),
         }
 
     if method == "ping":
@@ -130,9 +139,11 @@ def _build_tool_list(tools: dict) -> list[dict]:
     return result
 
 
-async def _call_tool(tools: dict, params: dict) -> dict:
-    name = params.get("name", "")
-    args = params.get("arguments", {})
+async def _call_tool(tools: dict, params: dict, execute_timeout: float = 30) -> dict:
+    name = params.get("name", "") if isinstance(params, dict) else ""
+    args = params.get("arguments") if isinstance(params, dict) else None
+    if args is None:
+        args = {}
 
     tool = tools.get(name)
     if not tool:
@@ -149,13 +160,22 @@ async def _call_tool(tools: dict, params: dict) -> dict:
             "isError": True,
         }
 
+    # Tool-level timeout overrides config default
+    perms = tool.get("permissions") or {}
+    timeout = perms.get("execute_timeout", execute_timeout)
+
     try:
-        result = await tool["execute"](args)
+        result = await asyncio.wait_for(tool["execute"](args), timeout=timeout)
         if isinstance(result, str):
             text = result
         else:
             text = json.dumps(result, indent=2, default=str)
         return {"content": [{"type": "text", "text": text}]}
+    except asyncio.TimeoutError:
+        return {
+            "content": [{"type": "text", "text": f'Error: Tool "{name}" timed out after {timeout}s'}],
+            "isError": True,
+        }
     except Exception as exc:
         return {
             "content": [{"type": "text", "text": f"Error: {exc}"}],

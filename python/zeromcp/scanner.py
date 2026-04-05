@@ -115,6 +115,7 @@ class ToolScanner:
         self.tools[name] = {
             "description": tool_meta.get("description", ""),
             "input": tool_meta.get("input", {}),
+            "permissions": tool_meta.get("permissions"),
             "execute": wrapped_execute,
         }
 

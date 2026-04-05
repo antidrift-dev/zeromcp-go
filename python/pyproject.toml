@@ -8,7 +8,27 @@ version = "0.1.0"
 description = "Zero-config MCP server. Drop a .py file in a folder, it's a tool."
 requires-python = ">=3.10"
 license = "MIT"
+readme = "README.md"
 keywords = ["mcp", "zero-config", "serverless", "tools", "ai-agents"]
+authors = [
+    { name = "Antidrift", email = "hello@probeo.io" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/antidrift-dev/zeromcp"
+Repository = "https://github.com/antidrift-dev/zeromcp"
+Issues = "https://github.com/antidrift-dev/zeromcp/issues"
 
 [project.scripts]
 zeromcp = "zeromcp.__main__:main"

@@ -82,13 +82,26 @@ public func validateInput(_ input: [String: Any], schema: JsonSchema) -> [String
 }
 
 private func jsonType(of value: Any) -> String {
-    // NSNumber from JSONSerialization: 0/1 match Bool AND Int/Double.
-    // Use objCType to distinguish boolean from number.
-    if let nsNum = value as? NSNumber {
-        let objcType = String(cString: nsNum.objCType)
-        if objcType == "c" || objcType == "B" {
+    // JSONSerialization represents JSON booleans and numbers as NSNumber.
+    // On macOS: booleans are CFBoolean (NSNumber with objCType "c").
+    // On Linux: booleans come through as Bool type.
+    // Check Bool first (before NSNumber) since Bool bridges to NSNumber.
+    if value is NSNumber {
+        #if canImport(Darwin)
+        let nsNum = value as! NSNumber
+        let t = String(cString: nsNum.objCType)
+        // "c" = char (CFBoolean), "B" = C++ bool — both mean JSON boolean
+        if t == "c" || t == "B" {
+            // But JSON integer 0/1 also gets objCType "q" or "i", not "c".
+            // Only actual JSON true/false get "c" on Darwin.
             return "boolean"
         }
+        #else
+        // On Linux/Foundation, check if the dynamic type is Bool
+        if type(of: value) == Bool.self {
+            return "boolean"
+        }
+        #endif
         return "number"
     }
     switch value {
