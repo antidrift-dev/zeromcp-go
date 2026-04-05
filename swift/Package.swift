@@ -9,6 +9,9 @@ let package = Package(
         .executable(name: "zeromcp-example", targets: ["Example"]),
         .executable(name: "zeromcp-sandbox-test", targets: ["SandboxTest"]),
         .executable(name: "zeromcp-chaos-test", targets: ["ChaosTest"]),
+        .executable(name: "zeromcp-timeout-test", targets: ["TimeoutTest"]),
+        .executable(name: "zeromcp-bypass-test", targets: ["BypassTest"]),
+        .executable(name: "zeromcp-credential-test", targets: ["CredentialTest"]),
     ],
     targets: [
         .target(
@@ -29,6 +32,21 @@ let package = Package(
             name: "ChaosTest",
             dependencies: ["ZeroMcp"],
             path: "Sources/ChaosTest"
+        ),
+        .executableTarget(
+            name: "TimeoutTest",
+            dependencies: ["ZeroMcp"],
+            path: "Sources/TimeoutTest"
+        ),
+        .executableTarget(
+            name: "BypassTest",
+            dependencies: ["ZeroMcp"],
+            path: "Sources/BypassTest"
+        ),
+        .executableTarget(
+            name: "CredentialTest",
+            dependencies: ["ZeroMcp"],
+            path: "Sources/CredentialTest"
         ),
         .testTarget(
             name: "ZeroMcpTests",

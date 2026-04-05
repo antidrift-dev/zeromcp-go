@@ -27,3 +27,15 @@ path = "examples/sandbox_test.rs"
 [[example]]
 name = "chaos_test"
 path = "examples/chaos_test.rs"
+
+[[example]]
+name = "timeout_test"
+path = "examples/timeout_test.rs"
+
+[[example]]
+name = "bypass_test"
+path = "examples/bypass_test.rs"
+
+[[example]]
+name = "credential_test"
+path = "examples/credential_test.rs"

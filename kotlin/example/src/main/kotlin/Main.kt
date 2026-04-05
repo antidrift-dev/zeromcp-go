@@ -9,6 +9,18 @@ fun main() {
         chaosTestMain()
         return
     }
+    if (System.getenv("ZEROMCP_TIMEOUT_TEST") == "true") {
+        timeoutTestMain()
+        return
+    }
+    if (System.getenv("ZEROMCP_BYPASS_TEST") == "true") {
+        bypassTestMain()
+        return
+    }
+    if (System.getenv("ZEROMCP_CREDENTIAL_TEST") == "true") {
+        credentialTestMain()
+        return
+    }
 
     val server = ZeroMcp()
 

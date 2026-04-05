@@ -159,7 +159,13 @@ class PermissionsBuilder {
         execVal = true
     }
 
-    internal fun build(): Permissions = Permissions(net, fsVal, execVal)
+    private var timeoutVal: Long = 0
+
+    fun executeTimeout(ms: Long) {
+        timeoutVal = ms
+    }
+
+    internal fun build(): Permissions = Permissions(net, fsVal, execVal, timeoutVal)
 }
 
 /**
