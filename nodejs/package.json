@@ -20,6 +20,10 @@
     "./scanner": {
       "types": "./dist/scanner.d.ts",
       "import": "./dist/scanner.js"
+    },
+    "./handler": {
+      "types": "./dist/handler.d.ts",
+      "import": "./dist/handler.js"
     }
   },
   "scripts": {

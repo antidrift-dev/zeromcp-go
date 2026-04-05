@@ -123,7 +123,7 @@ s.ServeStdio()
 
 | Language | Directory | Runtime | Tool model |
 |----------|-----------|---------|------------|
-| [Node.js](nodejs/) | `nodejs/` | Node 22+ | File-based (drop `.js` files) |
+| [Node.js](nodejs/) | `nodejs/` | Node 14+ (also Bun, Deno) | File-based (drop `.js` files) |
 | [Python](python/) | `python/` | Python 3.10+ | File-based (drop `.py` files) |
 | [Go](go/) | `go/` | Go 1.22+ | Code registration |
 | [Rust](rust/) | `rust/` | Rust 2021 | Code registration |
@@ -201,15 +201,33 @@ All implementations support an optional `zeromcp.config.json`:
 }
 ```
 
+## HTTP / Streamable HTTP
+
+ZeroMCP doesn't own the HTTP layer — you bring your own framework. ZeroMCP gives you a handler function that takes JSON-RPC in and returns JSON-RPC out.
+
+```js
+import { createHandler } from 'zeromcp/handler';
+
+const handler = await createHandler('./tools');
+
+// Express, Fastify, Hono, Cloudflare Workers, Lambda — anything
+app.post('/mcp', async (req, res) => res.json(await handler(req.body)));
+```
+
+This is compatible with MCP's Streamable HTTP transport. The handler processes `initialize`, `tools/list`, `tools/call`, and `ping`. Your framework handles the HTTP.
+
+See [Node.js README](nodejs/) for examples with Express, Fastify, Hono, Cloudflare Workers, and Lambda.
+
 ## Features
 
 - **Drop and go** &mdash; stdio out of the box, no server setup, no transport config
+- **Framework-agnostic HTTP** &mdash; `createHandler` works with any HTTP framework or serverless runtime
 - **Built-in sandbox** &mdash; network allowlists, filesystem controls, exec prevention, credential isolation
 - **File-based tools** &mdash; add a tool by creating a file, remove it by deleting (Node.js, Python, Ruby, PHP)
 - **Hot reload** &mdash; tool changes detected automatically
 - **Input validation** &mdash; JSON Schema generated from shorthand types (`string`, `number`, `boolean`, `object`, `array`)
+- **Execute timeout** &mdash; default 30s, configurable per tool
 - **Remote federation** &mdash; proxy tools from other MCP servers over HTTP
-- **Two transports** &mdash; stdio (default) and HTTP with optional Bearer token auth
 
 ## Testing
 

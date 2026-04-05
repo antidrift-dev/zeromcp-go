@@ -26,9 +26,66 @@ The official `@modelcontextprotocol/sdk` requires you to instantiate a server, c
 
 The official SDK also has **no sandbox**. ZeroMCP enforces per-tool network allowlists, credential isolation, filesystem controls, and exec prevention at runtime.
 
+## HTTP / Streamable HTTP
+
+ZeroMCP exposes a `createHandler` function that works with any HTTP framework. You handle the transport, ZeroMCP handles the MCP protocol.
+
+```js
+import { createHandler } from 'zeromcp/handler';
+
+const handler = await createHandler('./tools');
+```
+
+**Express:**
+
+```js
+import express from 'express';
+const app = express();
+app.use(express.json());
+app.post('/mcp', async (req, res) => res.json(await handler(req.body)));
+app.listen(3000);
+```
+
+**Fastify:**
+
+```js
+import Fastify from 'fastify';
+const app = Fastify();
+app.post('/mcp', async (req) => handler(req.body));
+app.listen({ port: 3000 });
+```
+
+**Hono:**
+
+```js
+import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+const app = new Hono();
+app.post('/mcp', async (c) => c.json(await handler(await c.req.json())));
+serve({ fetch: app.fetch, port: 3000 });
+```
+
+**Cloudflare Workers:**
+
+```js
+export default {
+  async fetch(request) {
+    return Response.json(await handler(await request.json()));
+  }
+};
+```
+
+**AWS Lambda:**
+
+```js
+export const handle = async (event) => handler(JSON.parse(event.body));
+```
+
+The handler takes a JSON-RPC object and returns a JSON-RPC response. No opinions about HTTP framework, headers, or routing.
+
 ## Requirements
 
-- Node.js 22+
+- Node.js 14+
 
 ## Defining tools
 
@@ -104,8 +161,9 @@ tools/
 ## Programmatic API
 
 ```js
-import { Server } from 'zeromcp';
-import { Scanner } from 'zeromcp/scanner';
+import { createHandler } from 'zeromcp/handler';  // HTTP handler
+import { ToolScanner } from 'zeromcp/scanner';     // Tool discovery
+import { toJsonSchema, validate } from 'zeromcp/schema'; // Schema utils
 ```
 
 ## Configuration
