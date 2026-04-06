@@ -1,0 +1,25 @@
+name: Publish C# to NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Pack
+        working-directory: csharp/ZeroMcp
+        run: dotnet pack -c Release
+
+      - name: Publish to NuGet
+        working-directory: csharp/ZeroMcp
+        run: dotnet nuget push bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

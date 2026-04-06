@@ -1,0 +1,32 @@
+name: Publish Ruby to RubyGems
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Build gem
+        working-directory: ruby
+        run: gem build zeromcp.gemspec
+
+      - name: Publish to RubyGems
+        working-directory: ruby
+        run: |
+          mkdir -p ~/.gem
+          echo "---" > ~/.gem/credentials
+          echo ":rubygems_api_key: ${{ secrets.RUBYGEMS_API_KEY }}" >> ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push zeromcp-*.gem

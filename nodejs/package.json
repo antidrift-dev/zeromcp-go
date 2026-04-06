@@ -1,5 +1,5 @@
 {
-  "name": "zeromcp",
+  "name": "@antidrift/zeromcp",
   "version": "0.1.0",
   "description": "Zero-config MCP server. Drop a JS file in a folder, it's a tool.",
   "type": "module",

@@ -1,0 +1,22 @@
+name: Publish Swift (subtree push)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Swift Package Manager pulls from git tags. Push subtree + tag to zeromcp-swift.
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push subtree to zeromcp-swift
+        run: |
+          git remote add zeromcp-swift https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/antidrift-dev/zeromcp-swift.git || true
+          SHA=$(git subtree split --prefix=swift HEAD)
+          git push zeromcp-swift "$SHA:refs/heads/main" --force
+          git push zeromcp-swift "$SHA:refs/tags/${{ github.ref_name }}" --force
