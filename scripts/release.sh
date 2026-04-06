@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 # ZeroMCP Release Script
 # Tags the monorepo and pushes subtree splits to all 10 language repos.
@@ -15,19 +15,8 @@ fi
 
 ORG="antidrift-dev"
 
-# Map: monorepo directory → subtree repo name
-declare -A SPLITS=(
-  [nodejs]=zeromcp-node
-  [python]=zeromcp-python
-  [go]=zeromcp-go
-  [rust]=zeromcp-rust
-  [java]=zeromcp-java
-  [kotlin]=zeromcp-kotlin
-  [swift]=zeromcp-swift
-  [csharp]=zeromcp-csharp
-  [ruby]=zeromcp-ruby
-  [php]=zeromcp-php
-)
+# dir:repo pairs
+SPLITS="nodejs:zeromcp-node python:zeromcp-python go:zeromcp-go rust:zeromcp-rust java:zeromcp-java kotlin:zeromcp-kotlin swift:zeromcp-swift csharp:zeromcp-csharp ruby:zeromcp-ruby php:zeromcp-php"
 
 echo "=== ZeroMCP Release $VERSION ==="
 echo ""
@@ -52,23 +41,25 @@ echo "  ✓ Tag $VERSION pushed to $ORG/zeromcp"
 echo ""
 
 # Push subtrees
-for dir in "${!SPLITS[@]}"; do
-  repo="${SPLITS[$dir]}"
+for pair in $SPLITS; do
+  dir="${pair%%:*}"
+  repo="${pair##*:}"
   remote_url="https://github.com/$ORG/$repo.git"
   echo "Pushing $dir/ → $ORG/$repo..."
 
   # Add remote if not exists
-  if ! git remote get-url "$repo" &>/dev/null; then
+  if ! git remote get-url "$repo" >/dev/null 2>&1; then
     git remote add "$repo" "$remote_url"
   fi
 
-  # Push subtree (force to handle first push to empty repo)
-  git subtree push --prefix="$dir" "$repo" main 2>&1 | tail -1
-
-  # Push the tag to the subtree repo
-  # We need to create a tag on the subtree's HEAD
+  # Split and push subtree
   SUBTREE_SHA=$(git subtree split --prefix="$dir" HEAD)
-  git push "$repo" "$SUBTREE_SHA:refs/tags/$VERSION" 2>&1 | tail -1
+
+  # Push to main (force for first push to empty repo)
+  git push "$repo" "$SUBTREE_SHA:refs/heads/main" --force 2>&1 | tail -1 || true
+
+  # Push the version tag
+  git push "$repo" "$SUBTREE_SHA:refs/tags/$VERSION" 2>&1 | tail -1 || true
 
   echo "  ✓ $repo main + $VERSION"
 done
@@ -79,8 +70,8 @@ echo ""
 echo "Monorepo:  https://github.com/$ORG/zeromcp/releases/tag/$VERSION"
 echo ""
 echo "Subtrees:"
-for dir in "${!SPLITS[@]}"; do
-  repo="${SPLITS[$dir]}"
+for pair in $SPLITS; do
+  repo="${pair##*:}"
   echo "  https://github.com/$ORG/$repo/releases/tag/$VERSION"
 done
 echo ""
