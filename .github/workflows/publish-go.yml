@@ -16,7 +16,7 @@ jobs:
 
       - name: Push subtree to zeromcp-go
         run: |
-          git remote add zeromcp-go https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/antidrift-dev/zeromcp-go.git || true
+          git remote add zeromcp-go https://x-access-token:${{ secrets.SUBTREE_PAT }}@github.com/antidrift-dev/zeromcp-go.git || true
           SHA=$(git subtree split --prefix=go HEAD)
           git push zeromcp-go "$SHA:refs/heads/main" --force
           git push zeromcp-go "$SHA:refs/tags/${{ github.ref_name }}" --force

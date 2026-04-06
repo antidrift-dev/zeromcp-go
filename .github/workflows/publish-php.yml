@@ -17,7 +17,7 @@ jobs:
 
       - name: Push subtree to zeromcp-php
         run: |
-          git remote add zeromcp-php https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/antidrift-dev/zeromcp-php.git || true
+          git remote add zeromcp-php https://x-access-token:${{ secrets.SUBTREE_PAT }}@github.com/antidrift-dev/zeromcp-php.git || true
           SHA=$(git subtree split --prefix=php HEAD)
           git push zeromcp-php "$SHA:refs/heads/main" --force
           git push zeromcp-php "$SHA:refs/tags/${{ github.ref_name }}" --force

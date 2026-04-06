@@ -16,7 +16,7 @@ jobs:
 
       - name: Push subtree to zeromcp-swift
         run: |
-          git remote add zeromcp-swift https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/antidrift-dev/zeromcp-swift.git || true
+          git remote add zeromcp-swift https://x-access-token:${{ secrets.SUBTREE_PAT }}@github.com/antidrift-dev/zeromcp-swift.git || true
           SHA=$(git subtree split --prefix=swift HEAD)
           git push zeromcp-swift "$SHA:refs/heads/main" --force
           git push zeromcp-swift "$SHA:refs/tags/${{ github.ref_name }}" --force
